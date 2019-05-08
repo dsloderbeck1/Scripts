@@ -47,6 +47,7 @@
         if $IntegrateWinPeDrivers = $true, Dism.exe MUST be installed on the device where script is running from. Also, be sure to list the path to your WinPE 10 drivers
             * WinPE 10 drivers must be placed into a "x64" or "x86" folder at the root of the "$WinPeDriversPath" path (found in "optional parameters" section) to install correctly
 
+        if $SetWinPeBackground = $true, be sure to list the path to your desired WinPE background image
     All of these settings are found under the "optional parameters" section.
 #>  
 
@@ -70,9 +71,9 @@ Param
     [String]$BootImageConsoleVersion,
     
     [Parameter(Mandatory = $false,
-        HelpMessage = 'Allows you to set the directory path of where you would like to create the new boot image. If left blank, will use the default path where the ConfigMgr boot image is located.')]
+        HelpMessage = 'Allows you to set the directory path of where you would like to store the new boot image. If value is $false, will store boot image in a sub-folder of the default ConfigMgr boot image folder location.')]
     [AllowEmptyString()]
-    [String]$BootWimFolderPath = "\\winsys\winsys\Packages\Deployment_WRK\_BootFiles",
+    [Boolean]$UseCustomBootWimFolderPath = $true,
 
     [Parameter(Mandatory = $false,
         HelpMessage = 'Set to $true to inject WinPE10 drivers into boot image')] 
@@ -83,9 +84,9 @@ Param
     [Boolean]$CopytoDpPkgShare = $true,
 
     [Parameter(Mandatory = $false,
-        HelpMessage = 'Allows you to set the directory path of where you would like to create the new boot image. If left blank, will use the default path where the ConfigMgr boot image is located.')]
+        HelpMessage = 'Allows you to set a custom WinPE background image.')]
     [AllowEmptyString()]
-    [String]$WinPeBackground = "\\winsys\winsys\Packages\Deployment_WRK\_BootFiles\WestRock.bmp",
+    [Boolean]$SetWinPeBackground = $true,
 
     [Parameter(Mandatory = $false,
         HelpMessage = 'Valid Values True/False - Set to True if you want to enable Command Command support on your new created boot images (applies only to new  created boot images)')]
@@ -125,6 +126,40 @@ Param
     [Boolean]$IntegrateNomad = $true
 )
 
+## Start of Optional Parameter values section ##
+
+if ($UpdateDistributionPoints -eq $true) {
+    # Specify the ConfigMgr Distribution Group name used when distributing new boot image
+    $DpGroupName = "Tier 1 - All Distribution Points"
+}
+
+if ($EnablePrestartCommand -eq $true) {
+    # Specify the prestart command line
+    [String]$PrestartCommandLine = "WRK-OSDFrontEnd.exe"
+}
+
+if ($PrestartIncludeFilesDirectory -eq $true) {
+    # Specify the directory path for the prestart files
+    [String]$PrestartFilesPath = "\\winsys\winsys\Packages\Deployment_WRK\WestRock\ConfigMgr OSD FrontEnd"
+}
+
+if ($InjectWinPe10Drivers -eq $true) {
+    # Specify the root path of your WinPE10 drivers. This path should have sub-folders of "x64" and "x86" which contain the respective WinPE 10 drivers.
+    $WinPeDriversRootPath = "\\winsys\winsys\Drivers_WRK\SCCM_Driver_Source\WinPE\WinPE10"
+}
+
+if ($UseCustomBootWimFolderPath -eq $true) {
+    # Specify the root path where you would like to store your boot image. This path should have sub-folders of "x64" and "x86" where the respective boot images will be stored.
+    $BootWimFolderPath = "\\winsys\winsys\Packages\Deployment_WRK\_BootFiles"
+}
+
+if ($SetWinPeBackground -eq $true ) {
+    # Specify the path to your WinPE background
+    $WinPeBackground = "\\winsys\winsys\Packages\Deployment_WRK\_BootFiles\WestRock.bmp"
+}
+
+## End of optional parameter values section ##
+
 # Set the current working directory to ensure when calling files from the current directory that the full path is used.
 $WorkingDirectory = $MyInvocation.MyCommand.Path | Split-Path -Parent
 
@@ -158,29 +193,6 @@ switch ($result) {
         $OSArchitecture = "Both"
     }
 }
-
-
-## Start of Optional Parameter values section ##
-if ($UpdateDistributionPoints -eq $true) {
-    # Specify the ConfigMgr Distribution Group name used when distributing new boot image
-    $DpGroupName = "Tier 1 - All Distribution Points"
-}
-
-if ($EnablePrestartCommand -eq $true) {
-    # Specify the prestart command line
-    [String]$PrestartCommandLine = "WRK-OSDFrontEnd.exe"
-}
-
-if ($PrestartIncludeFilesDirectory -eq $true) {
-    # Specify the directory path for the prestart files
-    [String]$PrestartFilesPath = "\\winsys\winsys\Packages\Deployment_WRK\WestRock\ConfigMgr OSD FrontEnd"
-}
-
-if ($InjectWinPe10Drivers -eq $true) {
-    # Specify the root path of your WinPE10 drivers. This path should have sub-folders of "x64" and "x86" which contain the respective WinPE 10 drivers.
-    $WinPeDriversRootPath = "\\winsys\winsys\Drivers_WRK\SCCM_Driver_Source\WinPE\WinPE10"
-}
-## End of optional parameter values section ##
 
 # Capture current date
 $Date = (Get-Date).ToString("MM-dd-yyyy")
@@ -545,12 +557,12 @@ break
                 }
 
                 # Get WMI information of Optional Components to add to boot image
-                    #- Windows PowerShell (WinPE-DismCmdlets) 
-                    #- Microsoft .NET (winPE-Dot3Svc)
-                    #- Storage (WinPE-EnhancedStorage)
-                    #- HTML (WinPE-HTA)
-                    #- Windows PowerShell (WinPE-StorageWMI)
-                    #- Microsoft Secure Boot Cmdlets (WinPE-SecureBootCmdlets)
+                #- Windows PowerShell (WinPE-DismCmdlets) 
+                #- Microsoft .NET (winPE-Dot3Svc)
+                #- Storage (WinPE-EnhancedStorage)
+                #- HTML (WinPE-HTA)
+                #- Windows PowerShell (WinPE-StorageWMI)
+                #- Microsoft Secure Boot Cmdlets (WinPE-SecureBootCmdlets)
 
                 if ($OSArchitecture -eq "x64") {
 
