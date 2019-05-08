@@ -24,7 +24,8 @@
     - Allows you to specify the FQDN of the intended SCCM provider (if script is not running from ConfigMgr primary site server)
     - Update and distribute boot image to ConfigMgr distribution point group
         * ($UpdateDistributionPoints is only honored if OverwriteExistingImage is set to $True)
- 
+    - Enables Nomad support in the boot image properties
+
     - Enables the following optional components in the boot image properties:
 
         - Windows PowerShell (WinPE-DismCmdlets) 
@@ -118,7 +119,11 @@ Param
 
     [Parameter(Mandatory = $false,
         HelpMessage = 'Set to $true if you want to replace an existing boot image')] 
-    [Boolean]$OverwriteExistingImage = $true
+    [Boolean]$OverwriteExistingImage = $true,
+
+    [Parameter(Mandatory = $false,
+        HelpMessage = 'Set to $true to integrate Nomad components into boot image')] 
+    [Boolean]$IntegrateNomad = $true
 )
 
 ## Start of Optional Parameter values section ##
@@ -454,6 +459,68 @@ Function CreateBootImage {
                 # Critical Error occured exit function
                 break
             }
+        
+if ($IntegrateNomad -eq $true ) {
+<#
+Enable Nomad on boot image
+NOTE: Enabling Nomad settings on boot image may NOT work if this section of script is tab-indented.
+Recommendation is to leave this section of script left-aligned.
+#>
+
+Try {
+Set-Location $SiteCode":"
+
+Write-Log "Get Package ID of $OSArchitecture boot image"
+$BootImageID = (Get-CMBootImage -Name $NewBootImageName).PackageID
+Write-Log "Package ID of $OSArchitecture boot image is $BootImageID"
+
+$acp =
+@"
+<AlternateDownloadSettings SchemaVersion="1.0"><Provider Name="NomadBranch"><Data><ProviderSettings /><pc>8</pc></Data></Provider></AlternateDownloadSettings>
+"@
+$MaxWorkRate = 80
+$pkg = Get-WmiObject -ComputerName $SccmServer -class SMS_BootImagePackage -namespace root\sms\site_$($SiteCode) -Filter "PackageID='$BootImageID'"
+#this displays the explicit path to the object
+$pkg2 = [wmi] $pkg.__Path    #use wmi accelerator to grab the object, including lazy
+
+if ($pkg2.AlternateContentProviders -notmatch "nomad") {
+"enabling acp"
+Write-Log "Enabling default Nomad Branch settings on $OSArchitecture boot image ($BootImageID)"
+$pkg2.AlternateContentProviders = $acp
+$pkg2.Put()
+}
+
+else {
+#acp already enabled, checking settings
+#check to see if work rate is configured properly
+$pkg2xml = [xml] $pkg2.AlternateContentProviders
+
+if ($pkg2xml.AlternateDownloadSettings.Provider.data.wr -ne $null) {
+if ($pkg2xml.AlternateDownloadSettings.Provider.data.wr -gt $MaxWorkRate) {
+"non-standard config Resetting acp default settings"
+$pkg2.AlternateContentProviders = $acp
+$pkg2.Put()
+}
+else {
+Write-Log "acp already enabled, and work rate is acceptable"
+}
+}
+else {
+Write-Log "wr is Null, which is considered acceptable"
+}
+}
+
+}
+
+Catch {
+Write-Log "Exception Type: $($_.Exception.GetType().FullName)"
+Write-Log "Exception Message: $($_.Exception.Message)"
+Write-Log "Error: Failed to enable Nomad on $OSArchitecture boot image ($BootImageID)"
+# Critical Error occured exit function
+break
+}
+
+} # end of "$IntegrateNomad" statement
 
             # Enable optional components on boot image
             Try {
@@ -586,7 +653,7 @@ Function CreateBootImage {
                 }
             }
         }
-    } # end of "Try" section to generate new boot image
+    } # end of section to generate new boot image
     
     Catch {
         Write-Log "Error: Failed to create $Architecture Boot Image. Exit $Architecture Boot Image post tasks."
@@ -594,8 +661,8 @@ Function CreateBootImage {
         Remove-Item -Path "$BootImageTempPath" -Force
         break
     }
-    
     $BootImageFound = $False  
+
 
     if ($DistributeBootImage -eq $true ) {
 
