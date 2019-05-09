@@ -4,7 +4,7 @@
 	 Created on:   	12/7/2017
      Created by:    Danny Sloderbeck
 	 Filename:      Create-NewBootImage.ps1
-     File Version:  1.0
+     File Version:  1.1
 	===========================================================================
     .DESCRIPTION
     This script is used to create a new customized boot image, using the latest version of the Windows ADK installed on your ConfigMgr Primary Site Server.
@@ -73,11 +73,11 @@ Param
     [Parameter(Mandatory = $false,
         HelpMessage = 'Allows you to set the directory path of where you would like to store the new boot image. If value is $false, will store boot image in a sub-folder of the default ConfigMgr boot image folder location.')]
     [AllowEmptyString()]
-    [Boolean]$UseCustomBootWimFolderPath = $true,
+    [Boolean]$UseCustomBootWimFolderPath = $false,
 
     [Parameter(Mandatory = $false,
         HelpMessage = 'Set to $true to inject WinPE10 drivers into boot image')] 
-    [Boolean]$InjectWinPe10Drivers = $true,
+    [Boolean]$InjectWinPe10Drivers = $false,
 
     [Parameter(Mandatory = $false,
         HelpMessage = 'Set to $true if you want to Copy the content in this package to a package share on distribution points')] 
@@ -86,7 +86,7 @@ Param
     [Parameter(Mandatory = $false,
         HelpMessage = 'Allows you to set a custom WinPE background image.')]
     [AllowEmptyString()]
-    [Boolean]$SetWinPeBackground = $true,
+    [Boolean]$SetWinPeBackground = $false,
 
     [Parameter(Mandatory = $false,
         HelpMessage = 'Valid Values True/False - Set to True if you want to enable Command Command support on your new created boot images (applies only to new  created boot images)')]
@@ -103,19 +103,19 @@ Param
 
     [Parameter(Mandatory = $false,
         HelpMessage = 'Set to $true to enable prestart command on boot image')] 
-    [Boolean]$EnablePrestartCommand = $true,
+    [Boolean]$EnablePrestartCommand = $false,
 
     [Parameter(Mandatory = $false,
         HelpMessage = 'Set to $true if prestart command should include files')] 
-    [Boolean]$PrestartIncludeFilesDirectory = $true,
+    [Boolean]$PrestartIncludeFilesDirectory = $false,
     
     [Parameter(Mandatory = $false,
         HelpMessage = 'Set to $true if you want to distribute boot images to ConfigMgr Distribution Group')] 
-    [Boolean]$DistributeBootImage = $true,
+    [Boolean]$DistributeBootImage = $false,
 
     [Parameter(Mandatory = $false,
         HelpMessage = 'Set to $true if you want update Distribution Point (applies only if $OverwriteExistingImage = $true and the script detects an existing boot image matching $BootImageName)')] 
-    [Boolean]$UpdateDistributionPoints = $true,
+    [Boolean]$UpdateDistributionPoints = $false,
 
     [Parameter(Mandatory = $false,
         HelpMessage = 'Set to $true if you want to replace an existing boot image')] 
@@ -130,32 +130,32 @@ Param
 
 if ($UpdateDistributionPoints -eq $true) {
     # Specify the ConfigMgr Distribution Group name used when distributing new boot image
-    $DpGroupName = "Tier 1 - All Distribution Points"
+    $DpGroupName = ""
 }
 
 if ($EnablePrestartCommand -eq $true) {
     # Specify the prestart command line
-    [String]$PrestartCommandLine = "WRK-OSDFrontEnd.exe"
+    [String]$PrestartCommandLine = ""
 }
 
 if ($PrestartIncludeFilesDirectory -eq $true) {
     # Specify the directory path for the prestart files
-    [String]$PrestartFilesPath = "\\winsys\winsys\Packages\Deployment_WRK\WestRock\ConfigMgr OSD FrontEnd"
+    [String]$PrestartFilesPath = ""
 }
 
 if ($InjectWinPe10Drivers -eq $true) {
     # Specify the root path of your WinPE10 drivers. This path should have sub-folders of "x64" and "x86" which contain the respective WinPE 10 drivers.
-    $WinPeDriversRootPath = "\\winsys\winsys\Drivers_WRK\SCCM_Driver_Source\WinPE\WinPE10"
+    $WinPeDriversRootPath = ""
 }
 
 if ($UseCustomBootWimFolderPath -eq $true) {
     # Specify the root path where you would like to store your boot image. This path should have sub-folders of "x64" and "x86" where the respective boot images will be stored.
-    $BootWimFolderPath = "\\winsys\winsys\Packages\Deployment_WRK\_BootFiles"
+    $BootWimFolderPath = ""
 }
 
 if ($SetWinPeBackground -eq $true ) {
     # Specify the path to your WinPE background
-    $WinPeBackground = "\\winsys\winsys\Packages\Deployment_WRK\_BootFiles\WestRock.bmp"
+    $WinPeBackground = ""
 }
 
 ## End of optional parameter values section ##
